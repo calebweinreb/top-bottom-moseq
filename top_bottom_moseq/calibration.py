@@ -1,22 +1,24 @@
 import numpy as np
 import tqdm
 import cv2
+import pickle
 
 from top_bottom_moseq.io import videoReader
 from top_bottom_moseq.util import rescale_ir
 from functools import partial
+from os.path import join, exists
 
 def find_ir_corners(packed_tuple,
- flags=None,
+ cv2_chkb_flags=None,
  criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001),
- checker_dims= (8,6)):
+ checker_dims=(8,6)):
 
     # Unpack data
     ix, (ir_frame, depth_frame) = packed_tuple
     ir_frame = rescale_ir(ir_frame).astype(np.uint8)
 
     # Do analysis
-    ret, corners_approx = cv2.findChessboardCorners(ir_frame, checker_dims, None, flags)
+    ret, corners_approx = cv2.findChessboardCorners(ir_frame, checker_dims, None, cv2_chkb_flags)
 
     corner = None
     if ret:
@@ -26,40 +28,64 @@ def find_ir_corners(packed_tuple,
             corner = np.hstack((uv,d[:,None]))
     return corner, ix
 
-def detect_corners_from_video_parallel(prefix, checker_dims, cv2_flags=None):
-    from tqdm.contrib.concurrent import process_map
+def detect_corners_from_video(prefix, checker_dims, overwrite=False, cv2_chkb_flags=None, corners_suffix='corners', parallel=False):
+    """# Detect corners from a checkerboard calibration video.    
 
-    # Detect corners from a checkerboard calibration video
-    # store the output as a list of (n,3) arrays in pixel-by-depth space
-    # also return the frame indexes where points were detected
+    Arguments:
+        prefix {str} -- prefix to top-bottom files
+        checker_dims {tuple} -- dimensions of inner intersections of calibration checkerboard 
+
+    Keyword Arguments:
+        overwrite {bool} -- if true, ignore existing output and overwrite it (default: {False})
+        cv2_chkb_flags {[type]} -- cv2 flags for checkerboard detection (default: {None})
+        corners_suffix {str} -- file suffix; can use if debugging various methods of corner detection (default: {'corners'})
+        parallel {bool} -- whether to run in parallel. Should see speed up for 4+ CPUs. (default: {False})
+
+    Returns:
+        corners -- 
+        ixs -- timestamps of all detected corners
+    """
+    corners_fname = join(prefix + f'.{corners_suffix}.p')
+
+    # Load data if it already exists
+    if exists(corners_fname) and not overwrite:
+        with open(corners_fname, 'rb') as f:
+            d = pickle.load(f)
+        corners = d['corners']
+        ixs = d['ixs']
+        return corners, ixs
     
-    func = partial(find_ir_corners, checker_dims=checker_dims, flags=cv2_flags)
-    with videoReader(prefix+'.ir.avi') as ir_reader, videoReader(prefix+'.depth.avi') as depth_reader:
-        out = process_map(func, enumerate(zip(ir_reader, depth_reader)))
+    # Otherwise process the video
+    if parallel:
+        from tqdm.contrib.concurrent import process_map
+        func = partial(find_ir_corners, checker_dims=checker_dims, cv2_chkb_flags=cv2_chkb_flags)
+        with videoReader(prefix+'.ir.avi') as ir_reader, videoReader(prefix+'.depth.avi') as depth_reader:
+            out = process_map(func, enumerate(zip(ir_reader, depth_reader)))
+        corners = [tup[0] for tup in out if tup[0] is not None]
+        ixs = [tup[1] for tup in out if tup[0] is not None]
+    else:
+        corners = [] # store the output as a list of (n,3) arrays in pixel-by-depth space
+        ixs     = [] # also return the frame indexes where points were detected
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        with videoReader(prefix+'.ir.avi') as ir_reader, videoReader(prefix+'.depth.avi') as depth_reader:
+            for ix,(ir,depth) in tqdm.tqdm(enumerate(zip(ir_reader,depth_reader))):
+                ir = rescale_ir(ir).astype(np.uint8)
+                ret, corners_approx = cv2.findChessboardCorners(ir, checker_dims, None, cv2_chkb_flags)
+                if ret:
+                    uv = cv2.cornerSubPix(ir, corners_approx, (5, 5), (-1, -1), criteria).squeeze()
+                    d = depth[uv[:,1].astype(int),uv[:,0].astype(int)]
+                    if np.all(d>0):
+                        corners.append(np.hstack((uv,d[:,None])))
+                        ixs.append(ix)
 
-    corners = [tup[0] for tup in out if tup[0] is not None]
-    ixs = [tup[1] for tup in out if tup[0] is not None]
+    # Save the output
+    with open(corners_fname, 'wb') as f:
+        d = pickle.dump({'corners': corners, 'ixs': ixs}, f)
 
     return corners, ixs
-
-def detect_corners_from_video(prefix, checker_dims):
-    # Detect corners from a checkerboard calibration video
-    corners = [] # store the output as a list of (n,3) arrays in pixel-by-depth space
-    ixs     = [] # also return the frame indexes where points were detected
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    flags = (cv2.CALIB_CB_ADAPTIVE_THRESH)    
-    with videoReader(prefix+'.ir.avi') as ir_reader, videoReader(prefix+'.depth.avi') as depth_reader:
-        for ix,(ir,depth) in tqdm.tqdm(enumerate(zip(ir_reader,depth_reader))):
-            ir = rescale_ir(ir).astype(np.uint8)
-            ret, corners_approx = cv2.findChessboardCorners(ir, checker_dims, None, flags)
-            if ret:
-                uv = cv2.cornerSubPix(ir, corners_approx, (5, 5), (-1, -1), criteria).squeeze()
-                d = depth[uv[:,1].astype(int),uv[:,0].astype(int)]
-                if np.all(d>0):
-                    corners.append(np.hstack((uv,d[:,None])))
-                    ixs.append(ix)
-    return corners, ixs
     
+
+
 
 def rigid_transform_3D(A, B):
     N = A.shape[0]; # total points
