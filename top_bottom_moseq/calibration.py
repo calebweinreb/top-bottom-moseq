@@ -2,6 +2,8 @@ import numpy as np
 import tqdm
 import cv2
 import pickle
+import imageio
+import matplotlib.pyplot as plt
 
 from top_bottom_moseq.io import videoReader
 from top_bottom_moseq.util import rescale_ir
@@ -117,3 +119,23 @@ def get_corner_label_reindexes(checker_dims):
         corner_label_matrix[::-1,:].flatten(),
         corner_label_matrix[::-1,:].flatten()[::-1]
     ]
+
+def save_corner_detection_video(calibration_prefix, camera, linewidth=1, radius=5):
+    corner_data = pickle.load(open(calibration_prefix+'.'+camera+'.corners.p','rb'))
+    corner_ixs = np.array(corner_data['ixs'])
+    save_path = calibration_prefix+'.'+camera+'.corners.mp4'
+    with videoReader(calibration_prefix+'.'+camera+'.ir.avi')                    as reader, \
+        imageio.get_writer(save_path, pixelformat='yuv420p', fps=30, quality=6) as writer:
+        for ix,im in tqdm.tqdm(enumerate(reader), desc='Corner detection video'):
+            im = np.repeat(rescale_ir(im)[:,:,None],3,axis=2).astype(np.uint8)
+            corner_ix = corner_ixs.searchsorted(ix)
+            if ix==corner_ixs[corner_ix]:
+                uvs = [(int(u),int(v)) for u,v in corner_data['corners'][corner_ix][:,:2]]
+                colors = [tuple([int(c*255) for c in plt.cm.viridis(x)[:3]]) for x in np.linspace(0,1,len(uvs))]
+                for uv1,uv2 in zip(uvs[:-1],uvs[1:]):
+                    im = cv2.line(im, uv1, uv2, (0,0,0), linewidth, cv2.LINE_AA)
+                for uv,c in zip(uvs,colors):
+                    im = cv2.circle(im, uv, radius, c, -1, cv2.LINE_AA)
+            text = '{} ({})'.format(ix, corner_ix)
+            im = cv2.putText(im, text, (10,im.shape[0]-10),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),1,cv2.LINE_AA)
+            writer.append_data(im)
