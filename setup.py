@@ -19,7 +19,7 @@ setuptools.setup(
         ['top_bottom_moseq/orthographic.c'], 
         extra_compile_args=['-fPIC','-shared']
     )],
-    python_requires='3.7',
+    python_requires='>=3.7, <3.8',
     install_requires=[
         'numpy',
         'ipykernel',
