@@ -53,7 +53,7 @@ def get_ortho_data(ir, depth, mouse_mask, occl_mask, R, t,
     ir = rescale_ir(ir)
     depth = depth.astype(float)
     occl_mask = binary_dilation(occl_mask, iterations=5)
-    v,u = np.array(mouse_mask[1:-1,1:-1].nonzero())+1
+    v,u = np.array(np.all([mouse_mask, depth>0],axis=0)[1:-1,1:-1].nonzero())+1
     
     if len(v)>min_points: 
         d,ir,mouse,occl = depth[v,u],ir[v,u],mouse_mask[v,u],occl_mask[v,u] 
@@ -163,7 +163,7 @@ def get_shadow_surface(xyz, camera_origin, center, clipping_bounds, ANGLE_RES, C
 
 def orthographic_reprojection(prefix, transforms, intrinsics,
                               angle_resolution=1000, min_points=10, 
-                              min_floor_depth=-5, crop_size=192,
+                              min_floor_depth=-25, crop_size=192,
                               overwrite_crop_centers=True):
     
     camera_names = ['top','bottom']
