@@ -11,7 +11,7 @@ def load_segmentation_model(weights_path):
         in_channels=1, encoder_weights=None,activation='sigmoid', encoder_depth=5,
         decoder_channels = (128, 128, 64, 32, 16),encoder_name='efficientnet-b0').to('cuda')
     model.load_state_dict(torch.load(weights_path))
-    return model
+    return model.eval()
 
 def get_crop_center(mask, crop_size):
     crop_center = np.array(mask.nonzero()).mean(1)
@@ -49,7 +49,7 @@ def segment_session(prefix,
              torch.no_grad():
 
             for ir in tqdm.tqdm(ir_reader, desc='segmentation, '+camera):
-                ir = rescale_ir(ir)[None,None,:,:]
+                ir = rescale_ir(ir)[None,None,:,:]/255
                 X = torch.from_numpy(ir.astype(np.float32)).to('cuda')
                 mouse_mask = to_numpy(mouse_model(X).squeeze())>threshold
                 occl_mask = np.zeros_like(mouse_mask)

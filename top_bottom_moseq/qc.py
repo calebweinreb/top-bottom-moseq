@@ -92,7 +92,7 @@ def get_qc_frame(*, masks, ortho, inpainted, aligned, encoded,
     all_panels = []
     
     if len(masks)>0:
-        titles = ['mouse.ir','mouse.depth','occlusion.ir','occlusion.ir']
+        titles = ['mouse.ir','mouse.depth','occlusion.ir','occlusion.depth']
         for camera_name,depth_min in zip(camera_names,depth_mins):
             panels = format_mask_panels(masks, camera_name, frame_size=frame_size, depth_min=depth_min, **mask_options)
             all_panels.append(add_titles(panels, [t+'.'+camera_name for t in titles], **text_options))
