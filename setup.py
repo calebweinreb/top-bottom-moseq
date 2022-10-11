@@ -19,7 +19,7 @@ setuptools.setup(
         ['top_bottom_moseq/orthographic.c'], 
         extra_compile_args=['-fPIC','-shared']
     )],
-    python_requires='>=3.7',
+    python_requires='==3.7.*',
     install_requires=[
         'numpy',
         'ipykernel',
@@ -30,7 +30,7 @@ setuptools.setup(
         'scikit-learn',
         'joblib',
         'scipy',
-        'open3d',
+        'open3d==0.9.0',
         'torch',
         'torchvision',
         'torchinfo',
