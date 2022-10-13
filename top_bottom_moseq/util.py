@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import av
 import json
+import yaml
 from top_bottom_moseq.io import count_frames
 
 def interpolate(x, axis=0):
@@ -87,3 +88,33 @@ def uncrop(X_cropped, crop_center, crop_size, shape):
     X[...,crop_center[0]-crop_size:crop_center[0]+crop_size,
           crop_center[1]-crop_size:crop_center[1]+crop_size] = X_cropped
     return X
+
+
+def load_config(config_filepath):
+    """Loads config file into memory
+        Shamelessly stolen from Rich Hakim / Akshay Jaggi: https://github.com/RichieHakim/face-rhythm/blob/release/face_rhythm/util/helpers.py
+    Args:
+        config_filepath (Path): path to config file
+    
+    Returns:
+        config (dict): actual config dict
+    
+    """
+    with open(config_filepath, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
+
+
+def save_config(config, config_filepath):
+    """
+    Dumps config file to yaml
+    
+    Args:
+        config (dict): config dict
+        config_filepath (Path): path to config file
+    
+    Returns:
+    
+    """
+    with open(config_filepath, 'w') as f:
+        yaml.safe_dump(config, f)
