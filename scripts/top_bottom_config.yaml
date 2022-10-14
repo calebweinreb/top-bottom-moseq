@@ -1,0 +1,7 @@
+autoencoder_weights: ./weights/dim_reduction_weights/autoencoder_temporal.pt
+localization_weights: ./weights/dim_reduction_weights/localizationNet_temporal.pt
+inpainting_weights: ./weights/train_inpainting_weights/{}-unet-intermediate.pt
+mouse_segmentation_weights: ./weights/unet_weights/unet_mouse_v2_IRonly.pt
+occlusion_segmentation_weights: ./weights/unet_weights/unet_occl_v4.pt
+intrinsics_prefix: /n/groups/datta/Jonah/Thermistor_only_recordings/top_bottom_dataset2/intrinsics/JP_rig
+transforms_path: /n/groups/datta/Jonah/Thermistor_only_recordings/calibrations/20221010/camera_3D_transforms.p
