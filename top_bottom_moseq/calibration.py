@@ -124,12 +124,14 @@ def save_corner_detection_video(calibration_prefix, camera, linewidth=1, radius=
     corner_data = pickle.load(open(calibration_prefix+'.'+camera+'.corners.p','rb'))
     corner_ixs = np.array(corner_data['ixs'])
     save_path = calibration_prefix+'.'+camera+'.corners.mp4'
-    with videoReader(calibration_prefix+'.'+camera+'.ir.avi')                    as reader, \
+    with videoReader(calibration_prefix+'.'+camera+'.ir.avi') as reader, \
         imageio.get_writer(save_path, pixelformat='yuv420p', fps=30, quality=6) as writer:
         for ix,im in tqdm.tqdm(enumerate(reader), desc='Corner detection video'):
             im = np.repeat(rescale_ir(im)[:,:,None],3,axis=2).astype(np.uint8)
             corner_ix = corner_ixs.searchsorted(ix)
-            if ix==corner_ixs[corner_ix]:
+            if corner_ix >= corner_ixs.shape:  
+                continue  # ie, if no more corners detected in the video
+            elif ix==corner_ixs[corner_ix]:
                 uvs = [(int(u),int(v)) for u,v in corner_data['corners'][corner_ix][:,:2]]
                 colors = [tuple([int(c*255) for c in plt.cm.viridis(x)[:3]]) for x in np.linspace(0,1,len(uvs))]
                 for uv1,uv2 in zip(uvs[:-1],uvs[1:]):
