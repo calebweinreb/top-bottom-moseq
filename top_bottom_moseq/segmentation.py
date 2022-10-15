@@ -1,6 +1,6 @@
 import numpy as np
-import torch
 import cv2
+import torch
 import tqdm
 import segmentation_models_pytorch
 from top_bottom_moseq.util import rescale_ir, load_matched_frames, crop, uncrop
