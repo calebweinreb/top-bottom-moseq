@@ -4,6 +4,7 @@ import av
 import json
 import yaml
 from top_bottom_moseq.io import count_frames
+from os.path import join, exists
 
 def interpolate(x, axis=0):
     x = np.moveaxis(x,axis,0)
@@ -118,3 +119,11 @@ def save_config(config, config_filepath):
     """
     with open(config_filepath, 'w') as f:
         yaml.safe_dump(config, f)
+
+
+def check_if_already_done(out_vid, frames, overwrite=False):
+    if exists(out_vid) and (not overwrite) and (count_frames(out_vid) == len(frames)):
+        print(f'{out_vid} already exists, continuing...')
+        return 1
+    else:
+        return 0
