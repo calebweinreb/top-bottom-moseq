@@ -3,8 +3,10 @@ import torch
 import cv2
 import tqdm
 import segmentation_models_pytorch
-from top_bottom_moseq.util import rescale_ir, load_matched_frames, crop, uncrop
+from top_bottom_moseq.util import rescale_ir, load_matched_frames, crop, uncrop, check_if_already_done
 from top_bottom_moseq.io import videoReader, videoWriter
+from os.path import join, exists
+from contextlib import ExitStack
 
 def load_segmentation_model(weights_path):
     model = segmentation_models_pytorch.UnetPlusPlus(
@@ -35,18 +37,33 @@ def segment_session(prefix,
                     camera_names=['top','bottom'], 
                     min_component_size=500, 
                     crop_size=96, 
-                    threshold=0.5
+                    threshold=0.5,
+                    overwrite=False
                    ):
+                   
+    # Load torch models and matched frames betw top/bottom cams
     mouse_model = load_segmentation_model(mouse_model_weights)
     occl_model = load_segmentation_model(occlusion_model_weights)
     matched_frames = load_matched_frames(prefix, camera_names)
     
     for camera,frames in zip(camera_names,matched_frames.T):
+
+        # Prepare names of files
+        ir_reader_in = prefix+'.{}.ir.avi'.format(camera)
+        mouse_mask_out = prefix+'.{}.mouse_mask.avi'.format(camera)
+        occl_mask_out = prefix+'.{}.occl_mask.avi'.format(camera)
         
-        with videoReader(prefix+'.{}.ir.avi'.format(camera), frames) as ir_reader, \
-             videoWriter(prefix+'.{}.mouse_mask.avi'.format(camera)) as mouse_writer, \
-             videoWriter(prefix+'.{}.occl_mask.avi'.format(camera))  as occl_writer, \
-             torch.no_grad():
+        # Don't process if already done!
+        if all([check_if_already_done(mask, frames, overwrite=overwrite) for mask in [mouse_mask_out, occl_mask_out]]):
+            return
+
+        # Segment the mouse in each frame
+        with ExitStack() as stack:
+
+            # Get file contexts
+            ir_reader = stack.enter_context(videoReader(ir_reader_in, frames))
+            mouse_writer, occl_writer = tuple([stack.enter_context(videoWriter(mask)) for mask in [mouse_mask_out, occl_mask_out]])
+            stack.enter_context(torch.no_grad())
 
             for ir in tqdm.tqdm(ir_reader, desc='segmentation, '+camera):
                 ir = rescale_ir(ir)[None,None,:,:]/255
@@ -64,4 +81,4 @@ def segment_session(prefix,
                 
                 mouse_writer.append(mouse_mask)
                 occl_writer.append(occl_mask)
-
+    return
