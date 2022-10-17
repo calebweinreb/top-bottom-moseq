@@ -22,7 +22,7 @@ setuptools.setup(
     python_requires='>=3.7, <3.8',
     install_requires=[
         'av',
-        'click'
+        'click',
         'h5py',
         'ipykernel',
         'imageio',
@@ -32,7 +32,7 @@ setuptools.setup(
         'matplotlib',
         'numpy',
         'open3d==0.9.0',
-        'pyyaml'
+        'pyyaml',
         'scikit-learn',
         'scipy',
         'segmentation_models_pytorch',
