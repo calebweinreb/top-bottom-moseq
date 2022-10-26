@@ -15,13 +15,13 @@ conda install -c conda-forge opencv
 pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
-Clone or download the this github repo and pip install:
+Clone or download the [this github repo](https://github.com/calebweinreb/top-bottom-moseq) and pip install:
 ```
 git clone https://github.com/calebweinreb/top-bottom-moseq.git
 pip install -e top-bottom-moseq
 ```
 
-Clone or download the [keypointMoseq](https://github.com/calebweinreb/keypointMoSeq) repo and pip install:
+Clone or download the [keypointMoseq repo](https://github.com/calebweinreb/keypointMoSeq) and pip install:
 ```
 git clone https://github.com/calebweinreb/keypointMoSeq.git
 pip install -e keypoint_moseq
