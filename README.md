@@ -3,7 +3,7 @@
 
 ## Installation
 
-Install [Anaconda](https://docs.anaconda.com/anaconda/install/index.html) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html). Create and activate an environment called `top_bottom_moseq` with python≥3.7:
+Install [Anaconda](https://docs.anaconda.com/anaconda/install/index.html) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html). Create and activate an environment called `top_bottom_moseq` with python=3.7:
 ```
 conda create -n top_bottom_moseq python=3.7
 conda activate top_bottom_moseq
@@ -19,6 +19,12 @@ Clone or download the this github repo and pip install:
 ```
 git clone https://github.com/calebweinreb/top-bottom-moseq.git
 pip install -e top-bottom-moseq
+```
+
+Clone or download the [keypointMoseq](https://github.com/calebweinreb/keypointMoSeq) repo and pip install:
+```
+git clone https://github.com/calebweinreb/keypointMoSeq.git
+pip install -e keypoint_moseq
 ```
 
 Make the new environment accessible in jupyter 
