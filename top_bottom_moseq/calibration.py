@@ -51,6 +51,7 @@ def detect_corners_from_video(prefix, checker_dims, overwrite=False, cv2_chkb_fl
 
     # Load data if it already exists
     if exists(corners_fname) and not overwrite:
+        print('Corners already detected, re-loading...')
         with open(corners_fname, 'rb') as f:
             d = pickle.load(f)
         corners = d['corners']
@@ -120,10 +121,15 @@ def get_corner_label_reindexes(checker_dims):
         corner_label_matrix[::-1,:].flatten()[::-1]
     ]
 
-def save_corner_detection_video(calibration_prefix, camera, linewidth=1, radius=5):
+def save_corner_detection_video(calibration_prefix, camera, linewidth=1, radius=5, overwrite=False):
     corner_data = pickle.load(open(calibration_prefix+'.'+camera+'.corners.p','rb'))
     corner_ixs = np.array(corner_data['ixs'])
     save_path = calibration_prefix+'.'+camera+'.corners.mp4'
+
+    if exists(save_path) and not overwrite:
+        print('Corners video already written...')
+        return
+
     with videoReader(calibration_prefix+'.'+camera+'.ir.avi') as reader, \
         imageio.get_writer(save_path, pixelformat='yuv420p', fps=30, quality=6) as writer:
         for ix,im in tqdm.tqdm(enumerate(reader), desc='Corner detection video'):
