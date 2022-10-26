@@ -7,7 +7,7 @@ import numpy as np
 from scipy.ndimage.morphology import binary_dilation
 from scipy.ndimage.filters import gaussian_filter1d, median_filter, maximum_filter1d, minimum_filter1d
 
-from top_bottom_moseq.util import interpolate, points_2d_to_3d, rescale_ir, load_matched_frames
+from top_bottom_moseq.util import interpolate, points_2d_to_3d, rescale_ir, load_matched_frames, check_if_already_done
 from top_bottom_moseq.io import count_frames, videoReader, videoWriter
 
 
@@ -164,7 +164,8 @@ def get_shadow_surface(xyz, camera_origin, center, clipping_bounds, ANGLE_RES, C
 def orthographic_reprojection(prefix, transforms, intrinsics,
                               angle_resolution=1000, min_points=10, 
                               min_floor_depth=-25, crop_size=192,
-                              overwrite_crop_centers=True):
+                              overwrite_crop_centers=False,
+                              overwrite=False):
     
     camera_names = ['top','bottom']
     matched_frames = load_matched_frames(prefix, camera_names)
@@ -176,6 +177,14 @@ def orthographic_reprojection(prefix, transforms, intrinsics,
         np.save(prefix+'.crop_centers.npy', crop_centers)
     
     top_frames,bottom_frames = load_matched_frames(prefix, ['top','bottom']).T
+    
+    # Don't process if already done!
+    out_file_list = [prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_ortho', 'depth_ortho', 'occl_ortho', 'missing_ortho'] for cam in ['top', 'bottom']]
+    if (not overwrite) and all([check_if_already_done(file, len(top_frames), overwrite=overwrite) for file in out_file_list]):
+        print('Movies already ortho re-reprojected, continuing...')
+        return
+
+    # Do the processing
     with videoReader(prefix+'.top.ir.avi', top_frames)          as top_ir_reader, \
          videoReader(prefix+'.top.depth.avi', top_frames)       as top_depth_reader, \
          videoReader(prefix+'.top.mouse_mask.avi')              as top_mouse_mask_reader, \

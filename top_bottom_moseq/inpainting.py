@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from kornia.morphology import dilation
 from top_bottom_moseq.io import read_frames, videoWriter
+from top_bottom_moseq.util import check_if_already_done
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -152,11 +153,18 @@ def inpaint_session(prefix, inpainting_weights, lag=2,
                     channels=['depth','ir','occl','missing'],
                     camera_names=['top','bottom'], 
                     scale_factors=[1,1,255,255],
-                    frame_size=(192,192)):
+                    frame_size=(192,192),
+                    overwrite=False):
     
     init_net, step_net, comb_net = load_inpainting_models(inpainting_weights)
     length = np.load(prefix+'.crop_centers.npy').shape[0]
     
+    # Don't process if already done!
+    out_file_list = [prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_inpainted', 'depth_inpainted'] for cam in ['top', 'bottom']]
+    if (not overwrite) and all([check_if_already_done(file, length, overwrite=overwrite) for file in out_file_list]):
+        print('Movies already in-painted, continuing...')
+        return
+
     # load full recording
     X = load_ortho_videos(prefix, length, camera_names, channels, scale_factors, frame_size)
     for ix in tqdm.trange(1,length-1, desc='spreading mask'):
