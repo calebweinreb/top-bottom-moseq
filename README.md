@@ -12,7 +12,7 @@ conda activate top_bottom_moseq
 Install opencv and jax
 ```
 conda install -c conda-forge opencv
-pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade "jax[cuda]==0.3.21" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
 Clone or download [top-bottom-moseq](https://github.com/calebweinreb/top-bottom-moseq) and pip install:
