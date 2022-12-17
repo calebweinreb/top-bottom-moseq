@@ -118,7 +118,20 @@ def get_corner_label_reindexes(checker_dims):
         corner_label_matrix.flatten(),
         corner_label_matrix.flatten()[::-1],
         corner_label_matrix[::-1,:].flatten(),
-        corner_label_matrix[::-1,:].flatten()[::-1]
+        corner_label_matrix[::-1,:].flatten()[::-1],
+        corner_label_matrix.T.flatten(),
+        corner_label_matrix.T.flatten()[::-1],
+        corner_label_matrix.T[::-1,:].flatten(),
+        corner_label_matrix.T[::-1,:].flatten()[::-1]
+    ],[
+        'identity',
+        'reverse',
+        'flip',
+        'flip+reverse',
+        'transpose',
+        'transpose+reverse',
+        'transpose+flip',
+        'transpose+flip+reverse',
     ]
 
 def save_corner_detection_video(calibration_prefix, camera, linewidth=1, radius=5, overwrite=False):
