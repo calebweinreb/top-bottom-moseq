@@ -54,7 +54,8 @@ def segment_session(prefix,
         occl_mask_out = prefix+'.{}.occl_mask.avi'.format(camera)
         
         # Don't process if already done!
-        if all([check_if_already_done(mask, frames, overwrite=overwrite) for mask in [mouse_mask_out, occl_mask_out]]):
+        if all([check_if_already_done(out_movie, len(frames), overwrite=overwrite) for out_movie in [mouse_mask_out, occl_mask_out]]):
+            print('Movies already segmented, continuing...')
             return
 
         # Segment the mouse in each frame

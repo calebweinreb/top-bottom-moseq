@@ -22,9 +22,10 @@ PATH = top_bottom_moseq.__path__._path[0]
 @click.argument('prefix')
 @click.option('--config-filepath', default='default')
 @click.option('--calibn-file', default=None)
-@click.option('--qc-vid', is_flag=True, default=True, show_default=True)
+@click.option('--qc-vid/--no-qc-vid', default=True, show_default=True)
 @click.option('--qc-vid-len', default=3000, show_default=True)
-def main(prefix, config_filepath, calibn_file, qc_vid, qc_vid_len):
+@click.option('--overwrite', is_flag=True, default=False, show_default=True)
+def main(prefix, config_filepath, calibn_file, qc_vid, qc_vid_len, overwrite):
 
     # load config from yaml
     print('Loading config file')
@@ -48,10 +49,10 @@ def main(prefix, config_filepath, calibn_file, qc_vid, qc_vid_len):
     transforms = pickle.load(open(calibn_file, 'rb'))
 
     # run the pipeline
-    segment_session(prefix, join(PATH, config['mouse_segmentation_weights']), join(PATH, config['occlusion_segmentation_weights']))  
-    orthographic_reprojection(prefix, transforms, intrinsics)
-    inpaint_session(prefix, join(PATH, config['inpainting_weights']))
-    encode_session(prefix, join(PATH, config['autoencoder_weights']), join(PATH, config['localization_weights']))
+    segment_session(prefix, join(PATH, config['mouse_segmentation_weights']), join(PATH, config['occlusion_segmentation_weights']), overwrite=overwrite)  
+    orthographic_reprojection(prefix, transforms, intrinsics, overwrite=overwrite)
+    inpaint_session(prefix, join(PATH, config['inpainting_weights']), overwrite=overwrite)
+    encode_session(prefix, join(PATH, config['autoencoder_weights']), join(PATH, config['localization_weights']), overwrite=overwrite)
 
     if qc_vid:
         save_qc_movie(prefix, qc_vid_len)

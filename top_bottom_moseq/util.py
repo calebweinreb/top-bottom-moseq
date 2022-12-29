@@ -121,9 +121,9 @@ def save_config(config, config_filepath):
         yaml.safe_dump(config, f)
 
 
-def check_if_already_done(out_vid, frames, overwrite=False):
-    if exists(out_vid) and (not overwrite) and (count_frames(out_vid) == len(frames)):
-        print(f'{out_vid} already exists, continuing...')
+def check_if_already_done(out_vid, n_frames_in, overwrite=False, verbose=False):
+    if exists(out_vid) and (not overwrite) and (count_frames(out_vid) == n_frames_in):
+        if verbose: print(f'{out_vid} already exists, continuing...')
         return 1
     else:
         return 0
