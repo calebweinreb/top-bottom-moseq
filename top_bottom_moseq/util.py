@@ -1,9 +1,12 @@
 import numpy as np
 import cv2
 import av
+import os
 import json
 import yaml
-from top_bottom_moseq.io import count_frames
+import tqdm
+import imageio
+from top_bottom_moseq.io import count_frames, videoReader
 from os.path import join, exists
 
 def interpolate(x, axis=0):
@@ -127,3 +130,47 @@ def check_if_already_done(out_vid, n_frames_in, overwrite=False, verbose=False):
         return 1
     else:
         return 0
+    
+
+    
+def transform_azure_ir_stream(inpath, outpath=None, num_frames=None, quality=7):
+    """
+    Convert a 16bit monochrome video to an 8bit mp4 by rescaling pixel intensities.
+    
+    Parameters
+    ----------
+    inpath : str 
+        Path to the input video
+        
+    outpath: str, default=None
+        Path where the output video will be written (must end in '.mp4'). 
+        If ``outpath=None``, then the output video will have the same location 
+        as ``inpath`` with the file extension switched to ``.mp4``.
+        
+    num_frames: int, default=None
+        Number of frames to convert. By default the full video is converted.
+
+    quality: int, default=7
+        Quality of output video (passed to imageio writer).
+    """
+    if not os.path.exists(inpath): 
+        raise AssertionError('The video {} does not exist'.format(inpath))
+    if outpath is None: 
+        outpath = os.path.splitext(inpath)[0]+'.mp4'
+        if outpath==inpath:
+            raise AssertionError('Cannot overwrite the input video. Make sure the input video does not end in .mp4 or specify an alternative `outpath`')
+    elif not os.path.splitext(outpath)[1]=='.mp4':
+        raise AssertionError('`outpath` must end with .mp4')
+        
+    num_frames_in_video = count_frames(inpath)
+    if num_frames is None: num_frames = num_frames_in_video
+    elif num_frames > num_frames_in_video:
+        raise AssertionError('`num_frames={} but there are only {} frames in the input video'.format(num_frames, num_frames_in_video))
+
+    with videoReader(inpath) as reader:
+        print('Saving transformed video to '+outpath)
+        with imageio.get_writer(outpath, fps=30, quality=quality, pixelformat='yuv420p') as writer:
+            for i,img in tqdm.tqdm(enumerate(reader)):
+                img = rescale_ir(img).astype(np.uint8)
+                writer.append_data(img)
+                if i > num_frames: break
