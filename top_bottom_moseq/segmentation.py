@@ -38,9 +38,15 @@ def segment_session(prefix,
                     min_component_size=500, 
                     crop_size=96, 
                     threshold=0.5,
-                    overwrite=False
+                    overwrite=False,
+                    output_prefix=None
                    ):
                    
+
+    # If no output prefix given, then it's same as the input prefix
+    if output_prefix is None:
+        output_prefix = prefix
+    
     # Load torch models and matched frames betw top/bottom cams
     mouse_model = load_segmentation_model(mouse_model_weights)
     occl_model = load_segmentation_model(occlusion_model_weights)
@@ -50,8 +56,8 @@ def segment_session(prefix,
 
         # Prepare names of files
         ir_reader_in = prefix+'.{}.ir.avi'.format(camera)
-        mouse_mask_out = prefix+'.{}.mouse_mask.avi'.format(camera)
-        occl_mask_out = prefix+'.{}.occl_mask.avi'.format(camera)
+        mouse_mask_out = output_prefix+'.{}.mouse_mask.avi'.format(camera)
+        occl_mask_out = output_prefix+'.{}.occl_mask.avi'.format(camera)
         
         # Don't process if already done!
         if all([check_if_already_done(out_movie, len(frames), overwrite=overwrite) for out_movie in [mouse_mask_out, occl_mask_out]]):
