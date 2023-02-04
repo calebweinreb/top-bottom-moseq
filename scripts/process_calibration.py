@@ -82,7 +82,7 @@ def main(base_path, config_filepath, out_path, checker_dims, parallel, qc_vid, o
     filtered_matched_timestamps = np.array([ixs for ixs in matched_timestamps if np.all([ix in ps for ix,ps in zip(ixs,calibration_points)])])
     matched_calib_points = [np.array([ps[ix] for ix in filtered_matched_timestamps[:,i]]) for i,ps in enumerate(calibration_points)]
 
-    reindexes = get_corner_label_reindexes(checker_dims)
+    reindexes, names  = get_corner_label_reindexes(checker_dims)
     projection_params = []
     for calib_points in matched_calib_points[:-1]:
         param_for_each_reindex = []
