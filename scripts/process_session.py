@@ -116,7 +116,7 @@ def main(prefix, config_filepath, calibn_file, qc_vid, qc_vid_len, overwrite, ou
         print('Skipping encoding')
 
     if qc_vid:
-        save_qc_movie(prefix, qc_vid_len)
+        save_qc_movie(prefix, qc_vid_len, output_prefix=output_prefix)
 
 if __name__ == '__main__':
     main()
