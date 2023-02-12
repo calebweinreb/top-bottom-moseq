@@ -177,6 +177,7 @@ def save_qc_movie(prefix, num_frames=None, output_prefix=None, **kwargs):
     if os.path.exists(output_prefix+'.'+camera_names[0]+'.ir_inpainted.avi'):
         inpainted_readers = {(camera_name,k): imageio.get_reader(
             output_prefix+'.'+camera_name+'.'+k+'.avi'
+
         ) for camera_name,k in product(camera_names, ['ir_inpainted','depth_inpainted'])}
     
     if os.path.exists(output_prefix+'.'+camera_names[0]+'.ir_aligned.avi'):
