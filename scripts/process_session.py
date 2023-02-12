@@ -51,6 +51,8 @@ def main(prefix, config_filepath, calibn_file, qc_vid, qc_vid_len, overwrite, ou
         output_prefix = join(output_dir, file_prefix)
         if not exists(output_dir):
             os.makedirs(output_dir)
+    else:
+        output_prefix = None
 
     # load config from yaml
     print('Loading config file')
@@ -102,6 +104,7 @@ def main(prefix, config_filepath, calibn_file, qc_vid, qc_vid_len, overwrite, ou
         inpaint_session(
             prefix, 
             config['inpainting_weights'], 
+            output_prefix=output_prefix,
             overwrite=overwrite)
     else:
         print('Skipping inpainting')
@@ -111,6 +114,7 @@ def main(prefix, config_filepath, calibn_file, qc_vid, qc_vid_len, overwrite, ou
             prefix, 
             config['autoencoder_weights'], 
             config['localization_weights'], 
+            output_prefix=output_prefix,
             overwrite=overwrite)
     else:
         print('Skipping encoding')

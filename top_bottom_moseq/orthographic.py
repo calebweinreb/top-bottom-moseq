@@ -82,10 +82,14 @@ def get_hidden_regions(rasters,shadow_surfaces):
     footprint = cv2.GaussianBlur(footprint.astype(np.uint8)*255, (7,7),2)>100
     return [np.all([footprint, r[:,:,0]==0],axis=0) for r in rasters]
 
-def get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames):
+def get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames, output_prefix):
+
+    # If no output prefix is specified, use the input prefix
+    if output_prefix is None: output_prefix = prefix
+
     crop_centers = []
     for name,frames in zip(camera_names, matched_frames.T):
-        with videoReader(prefix+'.'+name+'.mouse_mask.avi')    as mask_reader, \
+        with videoReader(output_prefix+'.'+name+'.mouse_mask.avi')    as mask_reader, \
              videoReader(prefix+'.'+name+'.depth.avi', frames) as depth_reader:
 
             crop_center_uvd = np.zeros((len(frames),3))*np.nan
@@ -178,10 +182,10 @@ def orthographic_reprojection(
     camera_names = ['top','bottom']
     matched_frames = load_matched_frames(prefix, camera_names)
     
-    if os.path.exists(prefix+'.crop_centers.npy') and not overwrite_crop_centers:
-        crop_centers = np.load(prefix+'.crop_centers.npy')
+    if os.path.exists(output_prefix+'.crop_centers.npy') and not overwrite_crop_centers:
+        crop_centers = np.load(output_prefix+'.crop_centers.npy')
     else:
-        crop_centers = get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames)
+        crop_centers = get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames, output_prefix=output_prefix)
         np.save(output_prefix+'.crop_centers.npy', crop_centers)
     
     top_frames,bottom_frames = load_matched_frames(prefix, ['top','bottom']).T
