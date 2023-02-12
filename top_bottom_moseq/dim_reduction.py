@@ -153,31 +153,35 @@ def load_models(autoencoder_weights, localization_weights, frame_size):
 def encode_session(prefix, autoencoder_weights, localization_weights, 
                    frame_size=(192,192), channels=['depth','ir'], 
                    camera_names=['top','bottom'],
-                   overwrite=False):
+                   overwrite=False,
+                   output_prefix=None):
 
-    length = np.load(prefix+'.crop_centers.npy').shape[0]
+    # if no output prefix given, then use the same as the input prefix
+    if output_prefix is None: output_prefix = prefix
+
+    length = np.load(output_prefix+'.crop_centers.npy').shape[0]
 
     # Don't process if already done!
-    out_file_list = [prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_aligned', 'depth_aligned', 'ir_encoded', 'depth_encoded'] for cam in ['top', 'bottom']]
+    out_file_list = [output_prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_aligned', 'depth_aligned', 'ir_encoded', 'depth_encoded'] for cam in ['top', 'bottom']]
     if (not overwrite) and all([check_if_already_done(file, length, overwrite=overwrite) for file in out_file_list]):
         print('Movies already encoded, continuing...')
         return
 
-    X = load_inpainting_videos(prefix, length, camera_names, channels, frame_size)
+    X = load_inpainting_videos(output_prefix, length, camera_names, channels, frame_size)
     
     autoencoder,localizationNet,transformer = load_models(
         autoencoder_weights, localization_weights, frame_size)
         
     latents,thetas = [],[]
     
-    with videoWriter(prefix+'.top.ir_aligned.avi')       as top_ir_aligned_writer, \
-         videoWriter(prefix+'.top.depth_aligned.avi')    as top_depth_aligned_writer, \
-         videoWriter(prefix+'.top.ir_encoded.avi')       as top_ir_encoded_writer, \
-         videoWriter(prefix+'.top.depth_encoded.avi')    as top_depth_encoded_writer, \
-         videoWriter(prefix+'.bottom.ir_aligned.avi')    as bottom_ir_aligned_writer, \
-         videoWriter(prefix+'.bottom.depth_aligned.avi') as bottom_depth_aligned_writer, \
-         videoWriter(prefix+'.bottom.ir_encoded.avi')    as bottom_ir_encoded_writer, \
-         videoWriter(prefix+'.bottom.depth_encoded.avi') as bottom_depth_encoded_writer, \
+    with videoWriter(output_prefix+'.top.ir_aligned.avi')       as top_ir_aligned_writer, \
+         videoWriter(output_prefix+'.top.depth_aligned.avi')    as top_depth_aligned_writer, \
+         videoWriter(output_prefix+'.top.ir_encoded.avi')       as top_ir_encoded_writer, \
+         videoWriter(output_prefix+'.top.depth_encoded.avi')    as top_depth_encoded_writer, \
+         videoWriter(output_prefix+'.bottom.ir_aligned.avi')    as bottom_ir_aligned_writer, \
+         videoWriter(output_prefix+'.bottom.depth_aligned.avi') as bottom_depth_aligned_writer, \
+         videoWriter(output_prefix+'.bottom.ir_encoded.avi')    as bottom_ir_encoded_writer, \
+         videoWriter(output_prefix+'.bottom.depth_encoded.avi') as bottom_depth_encoded_writer, \
          torch.no_grad():
         
         for ix in tqdm.trange(0,length, desc='alignment and encoding'):
@@ -199,6 +203,6 @@ def encode_session(prefix, autoencoder_weights, localization_weights,
             bottom_depth_encoded_writer.append(X_encoded[:,2])
             bottom_ir_encoded_writer.append(X_encoded[:,3])
 
-    np.save(prefix+'.latents.npy', latents)
-    np.save(prefix+'.thetas.npy', thetas)
+    np.save(output_prefix+'.latents.npy', latents)
+    np.save(output_prefix+'.thetas.npy', thetas)
     

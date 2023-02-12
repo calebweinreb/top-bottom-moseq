@@ -136,8 +136,11 @@ def load_ortho_videos(prefix, length, camera_names, channels, scale_factors, fra
     for i,(camera,(channel,scale)) in tqdm.tqdm(
         enumerate(product(camera_names,(zip(channels,scale_factors)))),
         desc='Loading orthographic projections'):
+        
         file_path = prefix+'.'+camera+'.'+channel+'_ortho.avi'
+        print(file_path)
         X[:,i] = read_frames(file_path, frame_size=frame_size, frames=range(length))*scale  
+
     return X
 
 
@@ -154,19 +157,24 @@ def inpaint_session(prefix, inpainting_weights, lag=2,
                     camera_names=['top','bottom'], 
                     scale_factors=[1,1,255,255],
                     frame_size=(192,192),
-                    overwrite=False):
+                    overwrite=False,
+                    output_prefix=None):
     
+    # If no output prefix given, then it's same as the input prefix
+    if output_prefix is None:
+        output_prefix = prefix
+
     init_net, step_net, comb_net = load_inpainting_models(inpainting_weights)
-    length = np.load(prefix+'.crop_centers.npy').shape[0]
+    length = np.load(output_prefix+'.crop_centers.npy').shape[0]
     
     # Don't process if already done!
-    out_file_list = [prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_inpainted', 'depth_inpainted'] for cam in ['top', 'bottom']]
+    out_file_list = [output_prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_inpainted', 'depth_inpainted'] for cam in ['top', 'bottom']]
     if (not overwrite) and all([check_if_already_done(file, length, overwrite=overwrite) for file in out_file_list]):
         print('Movies already in-painted, continuing...')
         return
 
     # load full recording
-    X = load_ortho_videos(prefix, length, camera_names, channels, scale_factors, frame_size)
+    X = load_ortho_videos(output_prefix, length, camera_names, channels, scale_factors, frame_size)
     for ix in tqdm.trange(1,length-1, desc='spreading mask'):
         X[ix,2] = np.any([X[ix,2],np.all([X[ix,0]>0,np.any(X[ix-lag:ix+lag+1,0]==0,axis=0)],axis=0)],axis=0).astype(float)*255
         X[ix,6] = np.any([X[ix,6],np.all([X[ix,4]>0,np.any(X[ix-lag:ix+lag+1,4]==0,axis=0)],axis=0)],axis=0).astype(float)*255
@@ -180,10 +188,11 @@ def inpaint_session(prefix, inpainting_weights, lag=2,
             Y_rev[ix] = pack(y)                
 
     # forward pass
-    with videoWriter(prefix+'.top.ir_inpainted.avi')       as top_ir_writer, \
-         videoWriter(prefix+'.top.depth_inpainted.avi')    as top_depth_writer, \
-         videoWriter(prefix+'.bottom.ir_inpainted.avi')    as bottom_ir_writer, \
-         videoWriter(prefix+'.bottom.depth_inpainted.avi') as bottom_depth_writer, \
+    print(f'Writing inpainted videos with prefix {output_prefix}...')
+    with videoWriter(output_prefix+'.top.ir_inpainted.avi')       as top_ir_writer, \
+         videoWriter(output_prefix+'.top.depth_inpainted.avi')    as top_depth_writer, \
+         videoWriter(output_prefix+'.bottom.ir_inpainted.avi')    as bottom_ir_writer, \
+         videoWriter(output_prefix+'.bottom.depth_inpainted.avi') as bottom_depth_writer, \
          torch.no_grad():
 
         y_fwd = init_net(mask_dilation(unpack(X[0])))

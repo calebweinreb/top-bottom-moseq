@@ -10,8 +10,6 @@ from scipy.ndimage.filters import gaussian_filter1d, median_filter, maximum_filt
 from top_bottom_moseq.util import interpolate, points_2d_to_3d, rescale_ir, load_matched_frames, check_if_already_done
 from top_bottom_moseq.io import count_frames, videoReader, videoWriter
 
-
-
 from ctypes import c_void_p, c_double, c_int, CDLL, cdll
 from numpy.ctypeslib import ndpointer, as_ctypes
 from sysconfig import get_config_var
@@ -84,10 +82,14 @@ def get_hidden_regions(rasters,shadow_surfaces):
     footprint = cv2.GaussianBlur(footprint.astype(np.uint8)*255, (7,7),2)>100
     return [np.all([footprint, r[:,:,0]==0],axis=0) for r in rasters]
 
-def get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames):
+def get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames, output_prefix):
+
+    # If no output prefix is specified, use the input prefix
+    if output_prefix is None: output_prefix = prefix
+
     crop_centers = []
     for name,frames in zip(camera_names, matched_frames.T):
-        with videoReader(prefix+'.'+name+'.mouse_mask.avi')    as mask_reader, \
+        with videoReader(output_prefix+'.'+name+'.mouse_mask.avi')    as mask_reader, \
              videoReader(prefix+'.'+name+'.depth.avi', frames) as depth_reader:
 
             crop_center_uvd = np.zeros((len(frames),3))*np.nan
@@ -161,46 +163,56 @@ def get_shadow_surface(xyz, camera_origin, center, clipping_bounds, ANGLE_RES, C
     return np.clip(shadow_surface, *clipping_bounds)
 
 
-def orthographic_reprojection(prefix, transforms, intrinsics,
-                              angle_resolution=1000, min_points=10, 
-                              min_floor_depth=-25, crop_size=192,
-                              overwrite_crop_centers=False,
-                              overwrite=False):
+def orthographic_reprojection(
+    prefix,
+    transforms, 
+    intrinsics,
+    angle_resolution=1000, 
+    min_points=10, 
+    min_floor_depth=-25, 
+    crop_size=192,
+    overwrite_crop_centers=False,
+    overwrite=False,
+    output_prefix=None):
     
+    # If no output prefix given, then it's same as the input prefix
+    if output_prefix is None:
+        output_prefix = prefix
+
     camera_names = ['top','bottom']
     matched_frames = load_matched_frames(prefix, camera_names)
     
-    if os.path.exists(prefix+'.crop_centers.npy') and not overwrite_crop_centers:
-        crop_centers = np.load(prefix+'.crop_centers.npy')
+    if os.path.exists(output_prefix+'.crop_centers.npy') and not overwrite_crop_centers:
+        crop_centers = np.load(output_prefix+'.crop_centers.npy')
     else:
-        crop_centers = get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames)
-        np.save(prefix+'.crop_centers.npy', crop_centers)
+        crop_centers = get_crop_centers(prefix, camera_names, transforms, intrinsics, matched_frames, output_prefix=output_prefix)
+        np.save(output_prefix+'.crop_centers.npy', crop_centers)
     
     top_frames,bottom_frames = load_matched_frames(prefix, ['top','bottom']).T
     
     # Don't process if already done!
-    out_file_list = [prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_ortho', 'depth_ortho', 'occl_ortho', 'missing_ortho'] for cam in ['top', 'bottom']]
+    out_file_list = [output_prefix + f'.{cam}.{movie_type}.avi' for movie_type in ['ir_ortho', 'depth_ortho', 'occl_ortho', 'missing_ortho'] for cam in ['top', 'bottom']]
     if (not overwrite) and all([check_if_already_done(file, len(top_frames), overwrite=overwrite) for file in out_file_list]):
         print('Movies already ortho re-reprojected, continuing...')
         return
 
     # Do the processing
-    with videoReader(prefix+'.top.ir.avi', top_frames)          as top_ir_reader, \
-         videoReader(prefix+'.top.depth.avi', top_frames)       as top_depth_reader, \
-         videoReader(prefix+'.top.mouse_mask.avi')              as top_mouse_mask_reader, \
-         videoReader(prefix+'.top.occl_mask.avi')               as top_occl_mask_reader, \
-         videoReader(prefix+'.bottom.ir.avi', bottom_frames)    as bottom_ir_reader, \
-         videoReader(prefix+'.bottom.depth.avi', bottom_frames) as bottom_depth_reader, \
-         videoReader(prefix+'.bottom.mouse_mask.avi')           as bottom_mouse_mask_reader, \
-         videoReader(prefix+'.bottom.occl_mask.avi')            as bottom_occl_mask_reader, \
-         videoWriter(prefix+'.top.ir_ortho.avi')                as top_ir_writer, \
-         videoWriter(prefix+'.top.depth_ortho.avi')             as top_depth_writer, \
-         videoWriter(prefix+'.top.occl_ortho.avi')              as top_occl_writer, \
-         videoWriter(prefix+'.top.missing_ortho.avi')           as top_missing_writer, \
-         videoWriter(prefix+'.bottom.ir_ortho.avi')             as bottom_ir_writer, \
-         videoWriter(prefix+'.bottom.depth_ortho.avi')          as bottom_depth_writer, \
-         videoWriter(prefix+'.bottom.occl_ortho.avi')           as bottom_occl_writer, \
-         videoWriter(prefix+'.bottom.missing_ortho.avi')        as bottom_missing_writer:
+    with videoReader(prefix+'.top.ir.avi', top_frames)                 as top_ir_reader, \
+         videoReader(prefix+'.top.depth.avi', top_frames)              as top_depth_reader, \
+         videoReader(output_prefix+'.top.mouse_mask.avi')              as top_mouse_mask_reader, \
+         videoReader(output_prefix+'.top.occl_mask.avi')               as top_occl_mask_reader, \
+         videoReader(prefix+'.bottom.ir.avi', bottom_frames)           as bottom_ir_reader, \
+         videoReader(prefix+'.bottom.depth.avi', bottom_frames)        as bottom_depth_reader, \
+         videoReader(output_prefix+'.bottom.mouse_mask.avi')           as bottom_mouse_mask_reader, \
+         videoReader(output_prefix+'.bottom.occl_mask.avi')            as bottom_occl_mask_reader, \
+         videoWriter(output_prefix+'.top.ir_ortho.avi')                as top_ir_writer, \
+         videoWriter(output_prefix+'.top.depth_ortho.avi')             as top_depth_writer, \
+         videoWriter(output_prefix+'.top.occl_ortho.avi')              as top_occl_writer, \
+         videoWriter(output_prefix+'.top.missing_ortho.avi')           as top_missing_writer, \
+         videoWriter(output_prefix+'.bottom.ir_ortho.avi')             as bottom_ir_writer, \
+         videoWriter(output_prefix+'.bottom.depth_ortho.avi')          as bottom_depth_writer, \
+         videoWriter(output_prefix+'.bottom.occl_ortho.avi')           as bottom_occl_writer, \
+         videoWriter(output_prefix+'.bottom.missing_ortho.avi')        as bottom_missing_writer:
 
         for (crop_center, top_data, bottom_data) in tqdm.tqdm(zip(crop_centers,
             zip(top_ir_reader,    top_depth_reader,    top_mouse_mask_reader,    top_occl_mask_reader),

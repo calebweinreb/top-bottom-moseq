@@ -13,7 +13,10 @@ def clip_and_color(x, low, high):
     x = np.clip((x.astype(float)-low)/(high-low),0,1)
     return (plt.cm.viridis(x)*255)[:,:,:3].astype(np.uint8)
 
-def load_frame_data(prefix, frame_ix, camera_names=['top','bottom'], frame_size=(192,192)):
+def load_frame_data(prefix, frame_ix, camera_names=['top','bottom'], frame_size=(192,192), output_prefix=None):
+
+    if output_prefix is None: 
+        output_prefix = prefix
     
     matched_frames = {camera_name:ix for camera_name,ix in zip(
         camera_names,load_matched_frames(prefix, camera_names)[frame_ix])}
@@ -29,20 +32,34 @@ def load_frame_data(prefix, frame_ix, camera_names=['top','bottom'], frame_size=
         data = {}
         for camera_name,suffix in product(camera_names,suffixes):
             
-            file_path = prefix+'.'+camera_name+'.'+suffix+'.avi'
+            if suffix in ['ir','depth']: 
+                file_path = prefix+'.'+camera_name+'.'+suffix+'.avi'
+            else:
+                file_path = output_prefix+'.'+camera_name+'.'+suffix+'.avi'
+
             if os.path.exists(file_path) and count_frames(file_path)>frame_ix:
                 
-                if suffix in ['ir','depth']: data[(camera_name,suffix)] = read_frames(
-                    prefix+'.'+camera_name+'.'+suffix+'.avi', 
-                    [matched_frames[camera_name]], pixel_format='gray16').squeeze()
+                if suffix in ['ir','depth']: 
+                    data[(camera_name,suffix)] = read_frames(
+                        prefix+'.'+camera_name+'.'+suffix+'.avi', 
+                        [matched_frames[camera_name]],
+                        pixel_format='gray16'
+                    ).squeeze()
                     
-                elif 'mask' in suffix: data[(camera_name,suffix)] = read_frames(
-                    prefix+'.'+camera_name+'.'+suffix+'.avi', 
-                    [frame_ix], pixel_format='gray8').squeeze()
+                elif 'mask' in suffix:
+                    data[(camera_name,suffix)] = read_frames(
+                        output_prefix+'.'+camera_name+'.'+suffix+'.avi', 
+                        [frame_ix], 
+                        pixel_format='gray8'
+                    ).squeeze()
                     
-                else: data[(camera_name,suffix)] = read_frames(
-                    prefix+'.'+camera_name+'.'+suffix+'.avi', 
-                    [frame_ix], frame_size=frame_size, pixel_format='gray8').squeeze()
+                else: 
+                    data[(camera_name,suffix)] = read_frames(
+                        output_prefix+'.'+camera_name+'.'+suffix+'.avi', 
+                        [frame_ix], 
+                        frame_size=frame_size,
+                        pixel_format='gray8'
+                    ).squeeze()
                     
         frame_data[name] = data
             
@@ -141,31 +158,36 @@ def get_qc_frame(*, masks, ortho, inpainted, aligned, encoded,
     if mode=='rows': return np.vstack([np.hstack(panels) for panels in all_panels]).astype(np.uint8)
     else: return np.hstack([np.vstack(panels) for panels in all_panels]).astype(np.uint8)
     
-def save_qc_movie(prefix, num_frames=None, **kwargs):
+def save_qc_movie(prefix, num_frames=None, output_prefix=None, **kwargs):
+
+    if output_prefix is None: 
+        output_prefix = prefix
+
     camera_names = ['top','bottom']
     ortho_readers, inpainted_readers, aligned_readers, encoded_readers = {},{},{},{}
     mask_readers = {(camera_name,k): imageio.get_reader(
-        prefix+'.'+camera_name+'.'+k+'.avi'
+        output_prefix+'.'+camera_name+'.'+k+'.avi'
     ) for camera_name,k in product(camera_names, ['mouse_mask','occl_mask'])}
     
-    if os.path.exists(prefix+'.'+camera_names[0]+'.ir_ortho.avi'):
+    if os.path.exists(output_prefix+'.'+camera_names[0]+'.ir_ortho.avi'):
         ortho_readers = {(camera_name,k): imageio.get_reader(
-            prefix+'.'+camera_name+'.'+k+'.avi'
+            output_prefix+'.'+camera_name+'.'+k+'.avi'
         ) for camera_name,k in product(camera_names, ['ir_ortho','depth_ortho','missing_ortho','occl_ortho'])}
     
-    if os.path.exists(prefix+'.'+camera_names[0]+'.ir_inpainted.avi'):
+    if os.path.exists(output_prefix+'.'+camera_names[0]+'.ir_inpainted.avi'):
         inpainted_readers = {(camera_name,k): imageio.get_reader(
-            prefix+'.'+camera_name+'.'+k+'.avi'
+            output_prefix+'.'+camera_name+'.'+k+'.avi'
+
         ) for camera_name,k in product(camera_names, ['ir_inpainted','depth_inpainted'])}
     
-    if os.path.exists(prefix+'.'+camera_names[0]+'.ir_aligned.avi'):
+    if os.path.exists(output_prefix+'.'+camera_names[0]+'.ir_aligned.avi'):
         aligned_readers = {(camera_name,k): imageio.get_reader(
-            prefix+'.'+camera_name+'.'+k+'.avi'
+            output_prefix+'.'+camera_name+'.'+k+'.avi'
         ) for camera_name,k in product(camera_names, ['ir_aligned','depth_aligned'])}
     
-    if os.path.exists(prefix+'.'+camera_names[0]+'.ir_encoded.avi'):
+    if os.path.exists(output_prefix+'.'+camera_names[0]+'.ir_encoded.avi'):
         encoded_readers = {(camera_name,k): imageio.get_reader(
-            prefix+'.'+camera_name+'.'+k+'.avi'
+            output_prefix+'.'+camera_name+'.'+k+'.avi'
         ) for camera_name,k in product(camera_names, ['ir_encoded','depth_encoded'])}
     
     matched_frames = load_matched_frames(prefix, ['top','bottom'])
@@ -173,7 +195,7 @@ def save_qc_movie(prefix, num_frames=None, **kwargs):
          videoReader(prefix+'.top.depth.avi',    matched_frames[:,0]) as top_depth_reader, \
          videoReader(prefix+'.bottom.ir.avi',    matched_frames[:,1]) as bottom_ir_reader, \
          videoReader(prefix+'.bottom.depth.avi', matched_frames[:,1]) as bottom_depth_reader, \
-         imageio.get_writer(prefix+'.QC.mp4', pixelformat='yuv420p', fps=30, quality=6) as writer:
+         imageio.get_writer(output_prefix+'.QC.mp4', pixelformat='yuv420p', fps=30, quality=6) as writer:
         
         for ix,(ir_top, depth_top, ir_bottom, depth_bottom) in tqdm.tqdm(enumerate(zip(
             top_ir_reader, top_depth_reader, bottom_ir_reader, bottom_depth_reader))):
@@ -195,8 +217,10 @@ def save_qc_movie(prefix, num_frames=None, **kwargs):
             frame = cv2.putText(frame, repr(ix),(10,frame.shape[0]-10),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),1,cv2.LINE_AA)
             writer.append_data(frame)
             if num_frames is not None and ix>=num_frames: break
-    print('QC video written to '+prefix+'.QC.mp4')
+    print('QC video written to ' + output_prefix + '.QC.mp4')
                 
-def grab_qc_frame(prefix, frame_ix, **kwargs):
-    frame_data = load_frame_data(prefix, frame_ix)
+def grab_qc_frame(prefix, frame_ix, output_prefix=None, **kwargs):
+    if output_prefix is None: 
+        output_prefix = prefix
+    frame_data = load_frame_data(prefix, frame_ix, output_prefix=None)
     return get_qc_frame(**frame_data, **kwargs)

@@ -36,7 +36,7 @@ setuptools.setup(
         'scikit-learn',
         'scipy',
         'segmentation_models_pytorch',
-        'torch',
+        'torch<1.13',
         'torchinfo',
         'torchplot',
         'torchvision',
